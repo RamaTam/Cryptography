@@ -4,17 +4,17 @@ public class Week1ProblemSet1 {
     private static final String cipherText = "6c73d5240a948c86981bc294814d";
 
     public static void main(String[] args) {
-        String hex1   = CryptoHelpers.toHex(text1);
-        String hex2   = CryptoHelpers.toHex(text2);
-        String key    = CryptoHelpers.xorHex(cipherText, hex1);
+        String hex1 = CryptoHelpers.toHex(text1);
+        String hex2 = CryptoHelpers.toHex(text2);
+        String key = CryptoHelpers.xorHex(cipherText, hex1);
         String result = CryptoHelpers.xorHex(hex2, key);
 
 
-        System.out.println("HEX for \""+text1+"\"        : " + hex1);
-        System.out.println("HEX for \""+text2+"\"        : " + hex2);
+        System.out.println("HEX for \"" + text1 + "\"        : " + hex1);
+        System.out.println("HEX for \"" + text2 + "\"        : " + hex2);
         System.out.println("Key                             : " + key);
-        System.out.println("Result hex for \""+text1+"\" : " + result +" <= This is result.");
-        System.out.println("Result hex for \""+text2+"\" : " + cipherText);
+        System.out.println("Result hex for \"" + text1 + "\" : " + result + " <= This is result.");
+        System.out.println("Result hex for \"" + text2 + "\" : " + cipherText);
     }
 
     /**

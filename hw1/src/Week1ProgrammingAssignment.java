@@ -1,11 +1,13 @@
 import javax.swing.*;
 import java.awt.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Week1ProgrammingAssignment {
 
-
-    private static ArrayList<String> cipherTexts = new ArrayList<String>(Arrays.asList(
+    private static final ArrayList<String> cipherTexts = new ArrayList<String>(Arrays.asList(
             "315c4eeaa8b5f8aaf9174145bf43e1784b8fa00dc71d885a804e5ee9fa40b16349c146fb778cdf2d3aff021dfff5b403b510d0d0455468aeb98622b137dae857553ccd8883a7bc37520e06e515d22c954eba5025b8cc57ee59418ce7dc6bc41556bdb36bbca3e8774301fbcaa3b83b220809560987815f65286764703de0f3d524400a19b159610b11ef3e",
             "234c02ecbbfbafa3ed18510abd11fa724fcda2018a1a8342cf064bbde548b12b07df44ba7191d9606ef4081ffde5ad46a5069d9f7f543bedb9c861bf29c7e205132eda9382b0bc2c5c4b45f919cf3a9f1cb74151f6d551f4480c82b2cb24cc5b028aa76eb7b4ab24171ab3cdadb8356f",
             "32510ba9a7b2bba9b8005d43a304b5714cc0bb0c8a34884dd91304b8ad40b62b07df44ba6e9d8a2368e51d04e0e7b207b70b9b8261112bacb6c866a232dfe257527dc29398f5f3251a0d47e503c66e935de81230b59b7afb5f41afa8d661cb",
@@ -19,10 +21,10 @@ public class Week1ProgrammingAssignment {
             "32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904"
     ));
 
-    private static String result; //= "32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904";
+    private static final int resultLength = cipherTexts.get(cipherTexts.size()-1).length();
     private static char[] key;
-    private static char[][] possibleLetters;
-    private static char[][] resultLetters;
+    private static char[][] possibleLetters;   // to store initial calculations (for undo )
+    private static char[][] resultLetters;     // to store result grid
     private static final boolean DEBUG = false;
 
     public static void main(String[] args) {
@@ -30,8 +32,8 @@ public class Week1ProgrammingAssignment {
         calculateXorsGrid();
         printResultGrid(possibleLetters);
 
-        for(int i=0;i<possibleLetters.length;i++)
-            System.arraycopy(possibleLetters[i],0,resultLetters[i],0,resultLetters[0].length);
+        for (int i = 0; i < possibleLetters.length; i++)
+            System.arraycopy(possibleLetters[i], 0, resultLetters[i], 0, resultLetters[0].length);
         printResultGrid(resultLetters);
 
         calculateMostPossibleValues();
@@ -39,120 +41,116 @@ public class Week1ProgrammingAssignment {
         manualDecryption();
     }
 
-    private static void initData(){
-        result = cipherTexts.get(cipherTexts.size()-1);
-        possibleLetters = new char[cipherTexts.size()][result.length()/2];
-        resultLetters = new char[cipherTexts.size()][result.length()/2];
-        key = new char[result.length()/2];
+    private static void initData() {
+
+        possibleLetters = new char[cipherTexts.size()][resultLength / 2];
+        resultLetters = new char[cipherTexts.size()][resultLength / 2];
+        key = new char[resultLength / 2];
 
         cutLongCipherTexts();
     }
 
     private static void cutLongCipherTexts() {
-        for(int i=0;i<cipherTexts.size();i++){
+        for (int i = 0; i < cipherTexts.size(); i++) {
             String currHexText = cipherTexts.get(i);
-            if(currHexText.length() > result.length())
-                    cipherTexts.set(i,currHexText.substring(0, result.length()));
+            if (currHexText.length() > resultLength)
+                cipherTexts.set(i, currHexText.substring(0, resultLength));
         }
-
     }
 
     private static void calculateXorsGrid() {
-        if(DEBUG)
-            System.out.println(result);
-        for(int i =0;i<possibleLetters.length;i++) {
+        if (DEBUG)
+            System.out.println(cipherTexts.get(cipherTexts.size()-1));
+        for (int i = 0; i < possibleLetters.length; i++) {
             String currText = cipherTexts.get(i);
-            String currTextXorResult = CryptoHelpers.xorHex(currText, result);
+            String currTextXorResult = CryptoHelpers.xorHex(currText, cipherTexts.get(cipherTexts.size()-1));
             String xorText = CryptoHelpers.fromHex(currTextXorResult);
 
-            if(DEBUG)
-                System.out.println(currText +"\n"+ xorText);
+            if (DEBUG)
+                System.out.println(currText + "\n" + xorText);
 
-            for(int j =0;j<possibleLetters[0].length &&j<xorText.length();j++)
+            for (int j = 0; j < possibleLetters[0].length && j < xorText.length(); j++)
                 possibleLetters[i][j] = xorText.charAt(j);
         }
 
     }
 
-    private static final char UNKNOWN_CHAR ='+';
-    private static void calculateMostPossibleValues() {
-          for(int i =0;i<possibleLetters[0].length;i++) {
-              Map< Character, Integer> valuesMap =  createValuesMap(i);
-              char resultChar = detectSolution(valuesMap);
+    private static final char UNKNOWN_CHAR = '+';
 
-              if(resultChar != UNKNOWN_CHAR)
-                  tryKeyAt(resultChar, resultLetters.length - 1, i);
-          }
+    private static void calculateMostPossibleValues() {
+        for (int i = 0; i < possibleLetters[0].length; i++) {
+            Map<Character, Integer> valuesMap = createValuesMap(i);
+            char resultChar = detectSolution(valuesMap);
+
+            if (resultChar != UNKNOWN_CHAR)
+                tryKeyAt(resultChar, resultLetters.length - 1, i);
+        }
     }
 
-    private static Map< Character, Integer> createValuesMap(int col){
-        Map< Character, Integer> valuesMap = new HashMap< Character, Integer>();
+    private static Map<Character, Integer> createValuesMap(int col) {
+        Map<Character, Integer> valuesMap = new HashMap<Character, Integer>();
 
-        for(int j=0;j<possibleLetters.length;j++){
-            char currCh = possibleLetters[j][col];
-            if(Character.isUpperCase(currCh))
+        for (char[] textRow : possibleLetters) {
+            char currCh = textRow[col];
+            if (Character.isUpperCase(currCh))
                 if (!valuesMap.containsKey(currCh))
                     valuesMap.put(currCh, 1);
                 else
-                    valuesMap.put(currCh, valuesMap.get(currCh)+1);
+                    valuesMap.put(currCh, valuesMap.get(currCh) + 1);
         }
         return valuesMap;
 
     }
 
     private static void tryKeyAt(char ch, int row, int col) {
-        String cipherText =  cipherTexts.get(row);
+        String cipherText = cipherTexts.get(row);
         printChangesInCell(-1, col);
         key[col] = CryptoHelpers.xorCharAt(cipherText, ch, col);
         printChangesInCell(-1, col);
-        for(int i=0;i<possibleLetters.length;i++)  {
+        for (int i = 0; i < possibleLetters.length; i++) {
 
             printChangesInCell(i, col);
             resultLetters[i][col] = CryptoHelpers.xorCharAt(cipherTexts.get(i), key[col], col);
             printChangesInCell(i, col);
         }
     }
-    //can Be Useful
-    private static void resetKeyAt(int charAt){
-        key[charAt] = '\u0000';
-        for(int i=0;i<possibleLetters.length;i++)
-            resultLetters[i][charAt] = possibleLetters[i][charAt];
-    }
 
     private static final int LETTERS_NEEDED_TO_DETECT_SPACE = 6;
+
     private static char detectSolution(Map<Character, Integer> valuesMap) {
         char maxKey = ' ';
         int maxValue = -1;
-        int valuesCounter =0;
-        for (Map.Entry<Character, Integer> entry : valuesMap.entrySet())
-        {
+        int valuesCounter = 0;
+
+        for (Map.Entry<Character, Integer> entry : valuesMap.entrySet()) {
             if (entry.getValue() > maxValue) {
                 maxKey = entry.getKey();
                 maxValue = entry.getValue();
             }
-            valuesCounter+=entry.getValue();
+            valuesCounter += entry.getValue();
         }
+
         return solutionAlgorithm(maxKey, maxValue, valuesCounter);
     }
 
-    private static char solutionAlgorithm(char maxKey, int maxValue, int valuesCounter){
+    private static char solutionAlgorithm(char maxKey, int maxValue, int valuesCounter) {
         //Probably can play with this to make more efficient algorithm
-        if(valuesCounter >= LETTERS_NEEDED_TO_DETECT_SPACE)
+        if (valuesCounter >= LETTERS_NEEDED_TO_DETECT_SPACE)
             return ' ';
-        else if(maxValue >= 3)
+        else if (maxValue >= 3)
             return Character.toLowerCase(maxKey);
-        else if(valuesCounter == maxValue && Character.isUpperCase(maxKey))
+        else if (valuesCounter == maxValue && Character.isUpperCase(maxKey))
             return Character.toLowerCase(maxKey);
         else return UNKNOWN_CHAR;
 
     }
 
     private static void manualDecryption() {
-       drawGUI();
-       //consoleInput(); //not so useful
+        drawGUI();
+        //consoleInput(); //not so useful
     }
 
-    private static void drawGUI(){
+    private static void drawGUI() {
         JFrame frame = new JFrame("Week1ProgrammingAssignment ");
 
         frame.setLayout(new BorderLayout());
@@ -179,31 +177,27 @@ public class Week1ProgrammingAssignment {
         tryKeyAt(ch, row, col);
     }
 
-
-
     private static final char USELES_XOR_CHAR = ' ';
+
     private static void printResultGrid(char[][] grid) {
-        if(DEBUG){
-        String res = "Results: ";
-        for (char[] text : grid) {
-            res += "\n";
-            for (char ch : text)
-                if(Character.isLetterOrDigit(ch))
-                    res += ch  + "|";
-                else
-                    res += USELES_XOR_CHAR + "|";
-        }
-        System.out.println(res);
+        if (DEBUG) {
+            String res = "Results: ";
+            for (char[] text : grid) {
+                res += "\n";
+                for (char ch : text)
+                    if (Character.isLetterOrDigit(ch))
+                        res += ch + "|";
+                    else
+                        res += USELES_XOR_CHAR + "|";
+            }
+            System.out.println(res);
         }
     }
 
     private static void printChangesInCell(int row, int col) {
-        if(DEBUG){
-            char resultChar;
-            if(row !=-1) resultChar = resultLetters[row][col] ;
-            else resultChar = key[col];
-
-            System.out.print("["+resultChar+"]" +" Char: "+(int)resultChar+"row: "+ row +" col: "+ col +"\n");
+        if (DEBUG) {
+            char resultChar = (row != -1) ? resultLetters[row][col] :  key[col];
+            System.out.print("[" + resultChar + "]" + " Char№: " + (int) resultChar + " row: " + row + " col: " + col + "\n");
         }
     }
 
@@ -247,6 +241,13 @@ public class Week1ProgrammingAssignment {
             if (scanner.hasNext("[a-zA-Z ]"))
                 return scanner.next("[a-zA-Z]").charAt(0);
         }
+    }
+
+    //can Be Useful
+    private static void resetKeyAt(int charAt) {
+        key[charAt] = '\u0000';
+        for (int i = 0; i < possibleLetters.length; i++)
+            resultLetters[i][charAt] = possibleLetters[i][charAt];
     }
     */
 }

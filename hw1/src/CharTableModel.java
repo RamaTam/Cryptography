@@ -57,7 +57,7 @@ public class CharTableModel extends AbstractTableModel {
 
         //fireTableDataChanged();
         fireTableStructureChanged();
-        Week1ProgrammingAssignment.changeTable(data[rowIndex][columnIndex], rowIndex, columnIndex);
+        Week1ProgrammingAssignment.changeTable(data[rowIndex][columnIndex], rowIndex, columnIndex);   //noob way;p
     }
 
 

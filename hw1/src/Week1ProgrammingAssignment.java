@@ -19,11 +19,8 @@ public class Week1ProgrammingAssignment {
             "32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904"
     ));
 
-    private static final String result = "32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904";
+    private static String result; //= "32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904";
     private static char[] key;
-
-
-
     private static char[][] possibleLetters;
     private static char[][] resultLetters;
     private static final boolean DEBUG = false;
@@ -40,13 +37,14 @@ public class Week1ProgrammingAssignment {
         calculateMostPossibleValues();
         printResultGrid(resultLetters);
         manualDecryption();
-
     }
 
     private static void initData(){
+        result = cipherTexts.get(cipherTexts.size()-1);
         possibleLetters = new char[cipherTexts.size()][result.length()/2];
         resultLetters = new char[cipherTexts.size()][result.length()/2];
         key = new char[result.length()/2];
+
         cutLongCipherTexts();
     }
 
@@ -70,8 +68,6 @@ public class Week1ProgrammingAssignment {
             if(DEBUG)
                 System.out.println(currText +"\n"+ xorText);
 
-
-
             for(int j =0;j<possibleLetters[0].length &&j<xorText.length();j++)
                 possibleLetters[i][j] = xorText.charAt(j);
         }
@@ -85,11 +81,8 @@ public class Week1ProgrammingAssignment {
               char resultChar = detectSolution(valuesMap);
 
               if(resultChar != UNKNOWN_CHAR)
-                  assumeKeyAt(resultChar, resultLetters.length - 1, i);
-
-
+                  tryKeyAt(resultChar, resultLetters.length - 1, i);
           }
-
     }
 
     private static Map< Character, Integer> createValuesMap(int col){
@@ -107,27 +100,24 @@ public class Week1ProgrammingAssignment {
 
     }
 
-    private static void assumeKeyAt(char ch, int row, int col) {
+    private static void tryKeyAt(char ch, int row, int col) {
         String cipherText =  cipherTexts.get(row);
-        printChanges(ch, -1, col);
+        printChangesInCell(-1, col);
         key[col] = CryptoHelpers.xorCharAt(cipherText, ch, col);
-        printChanges(ch, -1, col);
+        printChangesInCell(-1, col);
         for(int i=0;i<possibleLetters.length;i++)  {
 
-            printChanges(ch, i, col);
+            printChangesInCell(i, col);
             resultLetters[i][col] = CryptoHelpers.xorCharAt(cipherTexts.get(i), key[col], col);
-            printChanges(ch, i, col);
+            printChangesInCell(i, col);
         }
     }
-
+    //can Be Useful
     private static void resetKeyAt(int charAt){
         key[charAt] = '\u0000';
         for(int i=0;i<possibleLetters.length;i++)
             resultLetters[i][charAt] = possibleLetters[i][charAt];
-
     }
-
-
 
     private static final int LETTERS_NEEDED_TO_DETECT_SPACE = 6;
     private static char detectSolution(Map<Character, Integer> valuesMap) {
@@ -142,7 +132,10 @@ public class Week1ProgrammingAssignment {
             }
             valuesCounter+=entry.getValue();
         }
+        return solutionAlgorithm(maxKey, maxValue, valuesCounter);
+    }
 
+    private static char solutionAlgorithm(char maxKey, int maxValue, int valuesCounter){
         //Probably can play with this to make more efficient algorithm
         if(valuesCounter >= LETTERS_NEEDED_TO_DETECT_SPACE)
             return ' ';
@@ -151,15 +144,15 @@ public class Week1ProgrammingAssignment {
         else if(valuesCounter == maxValue && Character.isUpperCase(maxKey))
             return Character.toLowerCase(maxKey);
         else return UNKNOWN_CHAR;
+
     }
 
-
     private static void manualDecryption() {
-       GUIInput();
+       drawGUI();
        //consoleInput(); //not so useful
     }
 
-    private static void GUIInput(){
+    private static void drawGUI(){
         JFrame frame = new JFrame("Week1ProgrammingAssignment ");
 
         frame.setLayout(new BorderLayout());
@@ -180,9 +173,38 @@ public class Week1ProgrammingAssignment {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
     }
+
     public static void changeTable(char ch, int row, int col) {
         printResultString();
-        assumeKeyAt(ch, row, col);
+        tryKeyAt(ch, row, col);
+    }
+
+
+
+    private static final char USELES_XOR_CHAR = ' ';
+    private static void printResultGrid(char[][] grid) {
+        if(DEBUG){
+        String res = "Results: ";
+        for (char[] text : grid) {
+            res += "\n";
+            for (char ch : text)
+                if(Character.isLetterOrDigit(ch))
+                    res += ch  + "|";
+                else
+                    res += USELES_XOR_CHAR + "|";
+        }
+        System.out.println(res);
+        }
+    }
+
+    private static void printChangesInCell(int row, int col) {
+        if(DEBUG){
+            char resultChar;
+            if(row !=-1) resultChar = resultLetters[row][col] ;
+            else resultChar = key[col];
+
+            System.out.print("["+resultChar+"]" +" Char: "+(int)resultChar+"row: "+ row +" col: "+ col +"\n");
+        }
     }
 
     private static void printResultString() {
@@ -192,7 +214,7 @@ public class Week1ProgrammingAssignment {
 
         System.out.println(result);
     }
-
+    /*
     private static void consoleInput(){
         while (true) {
 
@@ -204,7 +226,7 @@ public class Week1ProgrammingAssignment {
             int TextNum = askForInt (scanner, "Print Row [0-10]:");
             char  Action = askForChar(scanner, "Print Action [ar]: ");
             if(Action =='a')
-                assumeKeyAt(Value, TextNum, Row);
+                tryKeyAt(Value, TextNum, Row);
             else
                 resetKeyAt(Row);
             printResultGrid(resultLetters);
@@ -226,36 +248,5 @@ public class Week1ProgrammingAssignment {
                 return scanner.next("[a-zA-Z]").charAt(0);
         }
     }
-
-    private static final char USELES_XOR_CHAR = ' ';
-    private static void printResultGrid(char[][] grid) {
-        if(DEBUG){
-        String res = "Results: ";
-        for (char[] text : grid) {
-            res += "\n";
-            for (char ch : text)
-
-                //if (ch!= '\n' && ch!='\t' && ch!= '\r')
-                if(Character.isLetterOrDigit(ch))
-                    res += ch  + "|";
-                else
-                    res += USELES_XOR_CHAR + "|";
-
-        }
-        System.out.println(res);
-        }
-    }
-
-    private static void printChanges(char ch, int row, int col) {
-        if(DEBUG){
-            char resultChar;
-            if(row !=-1)
-                resultChar = resultLetters[row][col] ;
-            else
-                resultChar = key[col];
-
-            System.out.print("["+resultChar+"]" +" Char: "+(int)resultChar+"row: "+ row +" col: "+ col +"\n");
-        }
-    }
-
+    */
 }

@@ -20,106 +20,185 @@ static const byte ciphertext4[] = "770b80259ec33beb2561358a9f2dc617e46218c0a53cb
 
 static const int ivSize = CryptoPP::AES::BLOCKSIZE; //16-byte encryption IV
 
-void myDecodeAEX_CBC(const byte* key, byte* iv, byte* cipher, string& recovered, int length);
-void myDecodeAEX_CTR(const byte* key, byte* iv, byte* cipher, string& recovered, int length);
+void testResults(const byte* hexKey, const byte* hexciphertext,const string mode, const int textLength);
 
-void incrementCounter(byte* iv, int position);
-void decode(const byte* hexKey,const byte* hexciphertext, string mode,int textLength);
+string myDecodeAEX_CBC(const byte* key, const byte* iv, const byte* cipher, const int length);
+string myDecodeAEX_CTR(const byte* key, const byte* iv, const byte* cipher, const int length);
+string myEncodeAEX_CBC(const byte* key, const byte* iv, const byte* text, const int length);
+string myEncodeAEX_CTR(const byte* key, const byte* iv, const byte* text, const int length);
 
-void encodeHex(const byte * inString1, byte * inString2, size_t length);
-void decodeHex(const byte * inString1, byte * inString2, size_t length);
+void incrementCounter(byte* iv,const int position);
+void xorBlock(byte* one, const byte* two, const int length);
+
+void encodeHex(const byte * inString1, byte * inString2,const size_t length);
+void decodeHex(const byte * inString1, byte * inString2,const size_t length);
   
-void decodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
-void decodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
-void encodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
-void encodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
+//void decodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
+//void decodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
+//void encodeAEX_CBC(const byte* key,const byte* iv, string& ciphertext, const string& plaintext);
+//void encodeAEX_CTR(const byte* key,const byte* iv, string& ciphertext, const string& plaintext);
 
 static const string CBC_MODE = "CBC";
 static const string CTR_MODE = "CTR";
 
 int main( int, char** ) {
 
-  decode(key1, ciphertext1, CBC_MODE, sizeof(ciphertext1)/2);
-  decode(key1, ciphertext2, CBC_MODE, sizeof(ciphertext2)/2);
+  testResults(key1, ciphertext1, CBC_MODE, sizeof(ciphertext1)/2);
+  testResults(key1, ciphertext2, CBC_MODE, sizeof(ciphertext2)/2);  
+  testResults(key2, ciphertext3, CTR_MODE, sizeof(ciphertext3)/2);    
+  testResults(key2, ciphertext4, CTR_MODE, sizeof(ciphertext4)/2); 
+ 
 
-  decode(key2, ciphertext3, CTR_MODE, sizeof(ciphertext3)/2);
-  decode(key2, ciphertext4, CTR_MODE, sizeof(ciphertext4)/2); 
-  
   return 0;
 }
 
-void decode(const byte* hexKey,const byte* hexciphertext, string mode,int textLength){
+void testResults(const byte* hexKey, const byte* hexciphertext, const string mode, const int textLength){
+  
+  //preparing input data
   byte key[CryptoPP::AES::DEFAULT_KEYLENGTH]; 
   decodeHex(hexKey, key, CryptoPP::AES::DEFAULT_KEYLENGTH * 2);
   
-  byte ciphertext[textLength];
-  decodeHex(hexciphertext, ciphertext, textLength * 2);
+  byte ivAndCipher[textLength];
+  decodeHex(hexciphertext, ivAndCipher, textLength * 2);
   
+  byte iv [ivSize];
+  memcpy(iv, ivAndCipher, ivSize);
+
+  byte* ciphertext = ivAndCipher + ivSize;
+  
+  int msglength = textLength - ivSize;
+
   string result = "";
 
-  if(mode == CBC_MODE){
-    myDecodeAEX_CBC(key, ciphertext, ciphertext + ivSize, result, textLength - ivSize); // my CBC-mode    
-    //decodeAEX_CBC(key, ciphertext, string((char*) (ciphertext + ivSize), (textLength - ivSize)), result);
-  }else if(mode == CTR_MODE){
-    myDecodeAEX_CTR(key, ciphertext, ciphertext + ivSize, result, textLength - ivSize); // my CTR-mode
-    //decodeAEX_CTR(key, ciphertext, string((char*) (ciphertext + ivSize), (textLength - ivSize)), result); 
-   }
+  //testing decoding
+  if(mode == CBC_MODE)
+    result = myDecodeAEX_CBC(key, iv, ciphertext, msglength);   
+  else if(mode == CTR_MODE)
+    result = myDecodeAEX_CTR(key, iv, ciphertext, msglength);
   
   cout << "recovered text: " << result << endl;
+  
+  //testing encoding
+  if(mode == CBC_MODE)
+    result = myEncodeAEX_CBC(key, iv,(const byte*) result.data(), result.size());   
+  else if(mode == CTR_MODE)
+    result = myEncodeAEX_CTR(key, iv,(const byte*) result.data(), result.size());
+  
+  byte hexResult[result.size()*2];
+  encodeHex((const byte*)result.data(), hexResult , result.size());
+
+  string input  = string((char*) hexciphertext, textLength * 2);
+  string output = string((char*) hexResult, result.size()  * 2);
+  cout << "i:" << input << endl << "o:" << output << endl;
+  
 }
 
 /*
  *
- * My implementation of different modes decoding of AEX
+ * My implementation of CBC and CTR encodings 
  *
  */
 
-void myDecodeAEX_CBC(const byte* key, byte* iv, byte* cipher, string& recovered, int length){
-  
-  byte result[length]; 
+string myEncodeAEX_CBC(const byte* key, const byte* iv, const byte* text, const int length){
   
   int padding = 0;
+
+  if (length%ivSize!=0)
+    padding = length%ivSize;
+  else
+    padding +=ivSize;
+  
+  int bufferLength= length + padding;
+
+  byte paddedText [bufferLength];  //same as text, but with padding
+  memcpy(paddedText, text, length);
+  fill_n(paddedText + length, padding, padding); 
+
+  byte result[ivSize + bufferLength ];
+  memcpy(result, iv, ivSize);  
+  
+  byte* ctr = (byte * )iv;
+  
+  CryptoPP::AES::Encryption e (key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+
+  for(int i =0;i < bufferLength/ivSize;i++){
+    byte* textblock = paddedText + i * ivSize;
+    
+    xorBlock(textblock, ctr, ivSize);
+    e.ProcessBlock (textblock, result + (i + 1) * ivSize);
+    ctr = result + (i + 1) * ivSize;
+  }
+
+   return string((char*)result, bufferLength+ivSize);
+  
+}
+
+//wow CTR mode is awesome!;p
+string myEncodeAEX_CTR(const byte* key, const byte* iv, const byte* text, const int length){
+  return string((char*)iv, ivSize) + myDecodeAEX_CTR(key, iv, text, length);
+}
+
+  
+/*
+ *
+ * My implementation of CBC and CTR decodings 
+ *
+ */
+
+string myDecodeAEX_CBC(const byte* key, const byte* iv, const byte* cipher, const int length){
+  
+  byte result[length]; 
+  int padding = 0;
+  byte* ctr = (byte * )iv;
+  
   CryptoPP::AES::Decryption e(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
   
   for(int i = 0;i < length/ivSize; i++){
-    
-    e.ProcessAndXorBlock (cipher+ i * ivSize, iv, result + i * ivSize);
+    e.ProcessAndXorBlock (cipher + i * ivSize, ctr, result + i * ivSize);
     
     if(i == length/ivSize - 1)
       padding = result[length - 1];
     
-    iv = cipher + i * ivSize;
-    
+    ctr = (byte*)(cipher + i * ivSize); 
   }
-    
-  recovered = string((char*)result, length - padding);
+
+  return string((char*)result, length - padding);
 
 }
 
 
-void myDecodeAEX_CTR(const byte* key, byte* iv, byte* cipher, string& recovered, int length){
+string myDecodeAEX_CTR(const byte* key, const byte* iv, const byte* cipher, const int length){
    
   int bufferLength = length;
   if(length%ivSize != 0)
     bufferLength += length%ivSize;
   
   byte result[bufferLength]; 
+
+  byte ctr[ivSize];
+  memcpy( ctr,iv, ivSize);
+
   CryptoPP::AES::Encryption e(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  
-  for(int i = 0;i < bufferLength/ivSize;i++){
-    
-    e.ProcessAndXorBlock (iv, cipher + i * ivSize, result + i * ivSize);
-    incrementCounter(iv, ivSize - 1);
+
+  for(int i = 0;i < bufferLength/ivSize;i++){     
+    e.ProcessAndXorBlock (ctr, cipher + i * ivSize, result + i * ivSize);
+    incrementCounter(ctr, ivSize - 1);
     
   }
     
-  recovered = string((char*)result, length);
+  return string((char*)result, length);
    
 }
 
+//CBC-Mode encryption related helper function
+void xorBlock(byte* one, const byte* two, const int length){
+  for(int i=0;i<length;i++){
+    one[i]^=two[i];
+  }
+}
 
 //CTR-Mode releated helper function to increment counter
-void incrementCounter(byte* iv, int position){
+void incrementCounter(byte* iv,const int position){
   if (position<0)
     return;
 
@@ -129,14 +208,14 @@ void incrementCounter(byte* iv, int position){
     incrementCounter(iv, position-1);
 }
 
-void encodeHex(const  byte * inString1, byte * inString2, size_t length){
+void encodeHex(const  byte * inString1, byte * inString2,const size_t length){
   CryptoPP::HexEncoder hexEncoder;
   hexEncoder.Put(inString1,length);
   hexEncoder.MessageEnd();
   hexEncoder.Get(inString2,length*2);
 }
 
-void decodeHex(const byte * inString1, byte * inString2, size_t length){
+void decodeHex(const byte * inString1, byte * inString2,const size_t length){
   CryptoPP::HexDecoder hexDecoder;
   hexDecoder.Put(inString1,length);
   hexDecoder.MessageEnd();

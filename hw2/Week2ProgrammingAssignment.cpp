@@ -22,10 +22,10 @@ static const int ivSize = CryptoPP::AES::BLOCKSIZE; //16-byte encryption IV
 
 void testResults(const byte* hexKey, const byte* hexciphertext,const string mode, const int textLength);
 
-string myDecodeAEX_CBC(const byte* key, const byte* iv, const byte* cipher, const int length);
-string myDecodeAEX_CTR(const byte* key, const byte* iv, const byte* cipher, const int length);
-string myEncodeAEX_CBC(const byte* key, const byte* iv, const byte* text, const int length);
-string myEncodeAEX_CTR(const byte* key, const byte* iv, const byte* text, const int length);
+string myDecodeAES_CBC(const byte* key, const byte* iv, const byte* cipher, const int length);
+string myDecodeAES_CTR(const byte* key, const byte* iv, const byte* cipher, const int length);
+string myEncodeAES_CBC(const byte* key, const byte* iv, const byte* text, const int length);
+string myEncodeAES_CTR(const byte* key, const byte* iv, const byte* text, const int length);
 
 void incrementCounter(byte* iv,const int position);
 void xorBlock(byte* one, const byte* two, const int length);
@@ -33,10 +33,10 @@ void xorBlock(byte* one, const byte* two, const int length);
 void encodeHex(const byte * inString1, byte * inString2,const size_t length);
 void decodeHex(const byte * inString1, byte * inString2,const size_t length);
   
-//void decodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
-//void decodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
-//void encodeAEX_CBC(const byte* key,const byte* iv, string& ciphertext, const string& plaintext);
-//void encodeAEX_CTR(const byte* key,const byte* iv, string& ciphertext, const string& plaintext);
+//void decodeAES_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
+//void decodeAES_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext);
+//void encodeAES_CBC(const byte* key,const byte* iv, string& ciphertext, const string& plaintext);
+//void encodeAES_CTR(const byte* key,const byte* iv, string& ciphertext, const string& plaintext);
 
 static const string CBC_MODE = "CBC";
 static const string CTR_MODE = "CTR";
@@ -72,17 +72,17 @@ void testResults(const byte* hexKey, const byte* hexciphertext, const string mod
 
   //testing decoding
   if(mode == CBC_MODE)
-    result = myDecodeAEX_CBC(key, iv, ciphertext, msglength);   
+    result = myDecodeAES_CBC(key, iv, ciphertext, msglength);   
   else if(mode == CTR_MODE)
-    result = myDecodeAEX_CTR(key, iv, ciphertext, msglength);
+    result = myDecodeAES_CTR(key, iv, ciphertext, msglength);
   
   cout << "recovered text: " << result << endl;
   
   //testing encoding
   if(mode == CBC_MODE)
-    result = myEncodeAEX_CBC(key, iv,(const byte*) result.data(), result.size());   
+    result = myEncodeAES_CBC(key, iv,(const byte*) result.data(), result.size());   
   else if(mode == CTR_MODE)
-    result = myEncodeAEX_CTR(key, iv,(const byte*) result.data(), result.size());
+    result = myEncodeAES_CTR(key, iv,(const byte*) result.data(), result.size());
   
   byte hexResult[result.size()*2];
   encodeHex((const byte*)result.data(), hexResult , result.size());
@@ -99,7 +99,7 @@ void testResults(const byte* hexKey, const byte* hexciphertext, const string mod
  *
  */
 
-string myEncodeAEX_CBC(const byte* key, const byte* iv, const byte* text, const int length){
+string myEncodeAES_CBC(const byte* key, const byte* iv, const byte* text, const int length){
   
   int padding = 0;
 
@@ -134,8 +134,8 @@ string myEncodeAEX_CBC(const byte* key, const byte* iv, const byte* text, const 
 }
 
 //wow CTR mode is awesome!;p
-string myEncodeAEX_CTR(const byte* key, const byte* iv, const byte* text, const int length){
-  return string((char*)iv, ivSize) + myDecodeAEX_CTR(key, iv, text, length);
+string myEncodeAES_CTR(const byte* key, const byte* iv, const byte* text, const int length){
+  return string((char*)iv, ivSize) + myDecodeAES_CTR(key, iv, text, length);
 }
 
   
@@ -145,7 +145,7 @@ string myEncodeAEX_CTR(const byte* key, const byte* iv, const byte* text, const 
  *
  */
 
-string myDecodeAEX_CBC(const byte* key, const byte* iv, const byte* cipher, const int length){
+string myDecodeAES_CBC(const byte* key, const byte* iv, const byte* cipher, const int length){
   
   byte result[length]; 
   int padding = 0;
@@ -167,7 +167,7 @@ string myDecodeAEX_CBC(const byte* key, const byte* iv, const byte* cipher, cons
 }
 
 
-string myDecodeAEX_CTR(const byte* key, const byte* iv, const byte* cipher, const int length){
+string myDecodeAES_CTR(const byte* key, const byte* iv, const byte* cipher, const int length){
    
   int bufferLength = length;
   if(length%ivSize != 0)
@@ -225,11 +225,11 @@ void decodeHex(const byte * inString1, byte * inString2,const size_t length){
 /*
  
 //
-// Default crypto++ style decoding of AEX
+// Default crypto++ style decoding of AES
 //
  
 
-void decodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
+void decodeAES_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
   try{
   
     CBC_Mode< AES >::Decryption d;
@@ -242,7 +242,7 @@ void decodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, str
   }  
 }
 
-void decodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
+void decodeAES_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
   try{
   
     CTR_Mode< AES >::Decryption d;
@@ -257,11 +257,11 @@ void decodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, str
 
   
 //
-// Default crypto++ style encoding of AEX
+// Default crypto++ style encoding of AES
 //
    
 
-void encodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
+void encodeAES_CBC(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
   try{
   
     CBC_Mode< AES >::Encryption d;
@@ -274,7 +274,7 @@ void encodeAEX_CBC(const byte* key,const byte* iv, const string& ciphertext, str
   }  
 }
 
-void encodeAEX_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
+void encodeAES_CTR(const byte* key,const byte* iv, const string& ciphertext, string& plaintext ){
   try{
   
     CTR_Mode< AES >::Encryption d;
